@@ -14,7 +14,7 @@ from copy import deepcopy
 
 
 def main():
-    # Read Video
+    # Read Vide
     input_video_path = "input_videos/input_video.mp4"
     video_frames = read_video(input_video_path)
 
