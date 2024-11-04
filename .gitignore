@@ -162,3 +162,8 @@ cython_debug/
 #.idea/
 
 models
+/.idea
+/runs/detect
+output_videos/output_video.avi
+/output_videos
+/output_videos
