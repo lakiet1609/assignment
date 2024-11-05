@@ -56,10 +56,10 @@ class BallTracker:
     def detect_frames(self,frames, read_from_stub=False, stub_path=None):
         ball_detections = []
 
-        if read_from_stub and stub_path is not None:
-            with open(stub_path, 'rb') as f:
-                ball_detections = pickle.load(f)
-            return ball_detections
+        # if read_from_stub and stub_path is not None:
+        #     with open(stub_path, 'rb') as f:
+        #         ball_detections = pickle.load(f)
+        #     return ball_detections
 
         for frame in frames:
             player_dict = self.detect_frame(frame)
@@ -75,8 +75,12 @@ class BallTracker:
         results = self.model.predict(frame,conf=0.15)[0]
 
         ball_dict = {}
+
         for box in results.boxes:
-            result = box.xyxy.tolist()[0]
+            if box.xyxyn is None:
+                result = []
+            else:
+                result = box.xyxy.tolist()[0]
             ball_dict[1] = result
         
         return ball_dict

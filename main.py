@@ -14,32 +14,36 @@ import cv2
 import pandas as pd
 from copy import deepcopy
 
-def process_video(cap="", save_video=False):
+def process_video(cap="", save_vid=False, selected_players=None):
     video_frames = read_video(cap)
-
-    player_tracker = PlayerTracker(model_path='models/yolov8x')
+    print("Num of frames: ", len(video_frames))
     ball_tracker = BallTracker(model_path='models/yolo5_last.pt')
 
-    player_detections = player_tracker.detect_frames(video_frames,
-                                                     read_from_stub=True,
-                                                     stub_path="tracker_stubs/player_detections.pkl"
-                                                     )
     ball_detections = ball_tracker.detect_frames(video_frames,
                                                  read_from_stub=True,
                                                  stub_path="tracker_stubs/ball_detections.pkl"
                                                  )
     ball_detections = ball_tracker.interpolate_ball_positions(ball_detections)
 
-
     # Court Line Detector model
     court_model_path = "models/keypoints_model.pth"
     court_line_detector = CourtLineDetector(court_model_path)
     court_keypoints = court_line_detector.predict(video_frames[0])
 
-    # choose players
-    print("Before", player_detections)
-    player_detections = player_tracker.choose_and_filter_players(court_keypoints, player_detections)
-    print("After", player_detections)
+    player_tracker = PlayerTracker(model_path='models/yolov8x')
+    # player_detections: [{1: [bbox], 2:[bbox]}]
+    player_detections = player_tracker.detect_frames(video_frames,
+                                                     read_from_stub=True,
+                                                     stub_path="tracker_stubs/player_detections.pkl"
+                                                     )
+    if selected_players is None:
+        player_detections = player_tracker.choose_and_filter_players(court_keypoints, player_detections)
+    else:
+        print("Selected Players in Main", selected_players)
+        player_detections = player_tracker.choose_players_manually(selected_players, player_detections)
+
+    print("Players Detections", player_detections)
+
     # MiniCourt
     mini_court = MiniCourt(video_frames[0])
 
@@ -129,7 +133,7 @@ def process_video(cap="", save_video=False):
     output_video_frames = player_tracker.draw_bboxes(video_frames, player_detections)
     output_video_frames = ball_tracker.draw_bboxes(output_video_frames, ball_detections)
 
-    ## Draw court Keypoints
+    # Draw court Keypoints
     output_video_frames = court_line_detector.draw_keypoints_on_video(output_video_frames, court_keypoints)
 
     # Draw Mini Court
@@ -138,14 +142,13 @@ def process_video(cap="", save_video=False):
     output_video_frames = mini_court.draw_points_on_mini_court(output_video_frames, ball_mini_court_detections,
                                                                color=(0, 255, 255))
 
-    # Draw Player Stats
-    output_video_frames = draw_player_stats(output_video_frames, player_stats_data_df)
+    output_video_frames = draw_player_stats(output_video_frames, player_stats_data_df[:len(output_video_frames)])
 
     ## Draw frame number on top left corner
     for i, frame in enumerate(output_video_frames):
         cv2.putText(frame, f"Frame: {i}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-    if save_video:
+    if save_vid:
         save_video(output_video_frames, "output_videos/output_video.avi")
 
     return True, output_video_frames

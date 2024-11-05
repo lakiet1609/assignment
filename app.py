@@ -162,7 +162,8 @@ def main():
                 st.write('Please select the players from the image above')
                 if 'active_player' not in st.session_state:
                     st.session_state.active_player = "Player 1"
-                    st.session_state.selected_players = []
+                    st.session_state.selected_players = set()
+                    st.session_state.filtered_player_detection = []
 
                 radio_options = [f"Player 1", "Player 2"]
                 st.session_state.active_player = st.radio(
@@ -174,22 +175,17 @@ def main():
                 )
                 active_player = st.session_state.active_player
 
-
-                filtered_player_detection = []
                 if value:
                     player_index = calculate_index(value, height=140, width=140, grid_len=len(detections_imgs_grid[0]))
                     st.write(f"Selected {active_player} with player index: {player_index}")
                     tmp_player_id = detections_imgs_list[player_index][1]
-                    st.session_state.selected_players.append(tmp_player_id)
-                    filtered_player_dict = {track_id: bbox for track_id, bbox in player_detections.items() if track_id==tmp_player_id}
+                    st.session_state.selected_players.add(tmp_player_id)
 
-                    filtered_player_detection.append(filtered_player_dict)
-                    st.write(filtered_player_detection)
 
                 if len(st.session_state.selected_players) == 2:
                     st.write(f"Selected all 2 players")
                     st.write('Please move to the next tab to start detection')
-
+                    st.write(st.session_state.filtered_player_detection)
         with t2col2:
             extracted_frame = st.empty()
             extracted_frame.image(frame_with_boxes, use_column_width=True, channels="BGR")
@@ -211,7 +207,6 @@ def main():
         st.markdown('---')
 
 
-        st.markdown('---')
         bcol21, bcol22, bcol23, bcol24 = st.columns([1.5, 1, 1, 1])
         with bcol21:
             st.write('')
@@ -228,8 +223,16 @@ def main():
 
         status = False
         if start_detection and not stop_detection:
-            st.toast("Detection started!")
-            status, final_video = process_video(cap, save_video=False)
+            if not auto_choose:
+                filtered_player_dct = {track_id: bbox for track_id, bbox in player_detections.items() if
+                                       track_id in st.session_state.selected_players}
+
+                st.session_state.filtered_player_detection.append(filtered_player_dct)
+                st.write(st.session_state.filtered_player_detection)
+                status, final_video = process_video(cap, save_vid=True,
+                                                    selected_players=st.session_state.filtered_player_detection)
+            else:
+                status, final_video = process_video(cap, save_vid=True)
         else:
             try:
                 cap.release()

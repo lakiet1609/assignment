@@ -196,12 +196,20 @@ class MiniCourt():
         output_ball_boxes= []
 
         for frame_num, player_bbox in enumerate(player_boxes):
+            print("Frame Num", frame_num)
+            print("Player BBOX", player_bbox)
+            if not player_bbox:
+                continue
             ball_box = ball_boxes[frame_num][1]
             ball_position = get_center_of_bbox(ball_box)
             closest_player_id_to_ball = min(player_bbox.keys(), key=lambda x: measure_distance(ball_position, get_center_of_bbox(player_bbox[x])))
 
             output_player_bboxes_dict = {}
             for player_id, bbox in player_bbox.items():
+                print("Player ID", player_id)
+                print("BBOX", bbox)
+                if player_id is None or bbox is None:
+                    continue
                 foot_position = get_foot_position(bbox)
 
                 # Get The closest keypoint in pixels
@@ -212,7 +220,9 @@ class MiniCourt():
                 # Get Player height in pixels
                 frame_index_min = max(0, frame_num-20)
                 frame_index_max = min(len(player_boxes), frame_num+50)
-                bboxes_heights_in_pixels = [get_height_of_bbox(player_boxes[i][player_id]) for i in range (frame_index_min,frame_index_max)]
+                bboxes_heights_in_pixels = [get_height_of_bbox(player_boxes[i][player_id])
+                                            for i in range (frame_index_min,frame_index_max)
+                                            if player_id in player_boxes[i]]
                 max_player_height_in_pixels = max(bboxes_heights_in_pixels)
 
                 mini_court_player_position = self.get_mini_court_coordinates(foot_position,
@@ -241,9 +251,12 @@ class MiniCourt():
 
         return output_player_boxes , output_ball_boxes
     
-    def draw_points_on_mini_court(self,frames,postions, color=(0,255,0)):
+    def draw_points_on_mini_court(self,frames,positions, color=(0,255,0)):
+
         for frame_num, frame in enumerate(frames):
-            for _, position in postions[frame_num].items():
+            if frame_num > len(positions)-1:
+                break
+            for _, position in positions[frame_num].items():
                 x,y = position
                 x= int(x)
                 y= int(y)

@@ -1,4 +1,6 @@
-from ultralytics import YOLO 
+from select import select
+
+from ultralytics import YOLO
 import cv2
 import pickle
 import sys
@@ -35,16 +37,25 @@ class PlayerTracker:
         distances.sort(key = lambda x: x[1])
         # Choose the first 2 tracks
         chosen_players = [distances[0][0], distances[1][0]]
+        print("Chosen Players", chosen_players)
         return chosen_players
 
+    def choose_players_manually(self, selected_players, player_detections):
+        chosen_player = [key for key in selected_players[0].keys()]
+
+        filtered_player_detections = []
+        for player_dict in player_detections:
+            filtered_player_dict = {track_id: bbox for track_id, bbox in player_dict.items() if track_id in chosen_player}
+            filtered_player_detections.append(filtered_player_dict)
+        return filtered_player_detections
 
     def detect_frames(self,frames, read_from_stub=False, stub_path=None):
         player_detections = []
 
-        if read_from_stub and stub_path is not None:
-            with open(stub_path, 'rb') as f:
-                player_detections = pickle.load(f)
-            return player_detections
+        # if read_from_stub and stub_path is not None:
+        #     with open(stub_path, 'rb') as f:
+        #         player_detections = pickle.load(f)
+        #     return player_detections
 
         for frame in frames:
             player_dict = self.detect_frame(frame)
@@ -61,7 +72,10 @@ class PlayerTracker:
         id_name_dict = results.names
 
         player_dict = {}
+
         for box in results.boxes:
+            if box.id is None:
+                continue
             track_id = int(box.id.tolist()[0])
             result = box.xyxy.tolist()[0]
             object_cls_id = box.cls.tolist()[0]
@@ -71,17 +85,20 @@ class PlayerTracker:
         
         return player_dict
 
-    def draw_bboxes(self,video_frames, player_detections):
+
+    def draw_bboxes(self, video_frames, player_detections):
         output_video_frames = []
+        print("Shape: ", video_frames[0].shape[:2])
         for frame, player_dict in zip(video_frames, player_detections):
-            # Draw Bounding Boxes
+            frame_height, frame_width = frame.shape[:2]
             for track_id, bbox in player_dict.items():
-                x1, y1, x2, y2 = bbox
-                cv2.putText(frame, f"Player ID: {track_id}",(int(bbox[0]),int(bbox[1] -10 )),cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
-                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+                # Normalize coordinates
+                x1, y1, x2, y2 = [int(coord) for coord in bbox]
+                # x1 = int(x1 * original_frame_width / frame_width)
+                # x2 = int(x2 * original_frame_width / frame_width)
+                # y1 = int(y1 * original_frame_height / frame_height)
+                # y2 = int(y2 * original_frame_height / frame_height)
+                cv2.putText(frame, f"Player ID: {track_id}", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 2)
             output_video_frames.append(frame)
-        
         return output_video_frames
-
-
-    
