@@ -25,7 +25,7 @@ class BallTracker:
         # convert the list into pandas dataframe
         df_ball_positions = pd.DataFrame(ball_positions,columns=['x1','y1','x2','y2'])
 
-        df_ball_positions['ball_hit'] = 0
+        df_ball_positions.loc[:, 'ball_hit'] = 0
 
         df_ball_positions['mid_y'] = (df_ball_positions['y1'] + df_ball_positions['y2'])/2
         df_ball_positions['mid_y_rolling_mean'] = df_ball_positions['mid_y'].rolling(window=5, min_periods=1, center=False).mean()
@@ -47,7 +47,7 @@ class BallTracker:
                         change_count+=1
             
                 if change_count>minimum_change_frames_for_hit-1:
-                    df_ball_positions['ball_hit'].iloc[i] = 1
+                    df_ball_positions.loc[i, "ball_hit"] =  1
 
         frame_nums_with_ball_hits = df_ball_positions[df_ball_positions['ball_hit']==1].index.tolist()
 
