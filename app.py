@@ -1,15 +1,19 @@
+import argparse
+from typing import final
+
 import streamlit as st
 from streamlit_image_coordinates import streamlit_image_coordinates
-import os
+import os, sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'shot_identification'))
+from shot_indetification.tennis_shot_identification_and_counts import ShotIdentification
 import cv2
 import tempfile
 from main import process_video
 from sympy.physics.units import current
+from utils import read_video
 from trackers import PlayerTracker
 import numpy as np
-# from yolo_inference import model
 
-CHOSEN_PLAYERS = [1]
 def calculate_index(streamlit_coordinates, height, width, grid_len):
     def get_coordinates(streamlit_coordinates):
         if streamlit_coordinates:
@@ -83,34 +87,34 @@ def main():
 
     # Main View
     # tab1, tab2, tab3 = st.tabs(['How to use', 'Player Stats', 'Player Analysis'])
-    tab2, tab3 = st.tabs(['Players Detection', 'Court Detection'])
+    tab2, tab3, tab4  = st.tabs(['Detection Settings', 'Players Analysis', 'Pose Analysis'])
     # How to use tab
     # with tab1:
     #     st.header(':blue[Welcome!]')
     #     st.subheader('Main Application Functionalities:', divider='blue')
     #     st.markdown("""
     #                         1. Tennis players, tennis ball detection and tracking.
-    #                         2. Tennis court's key-points detection.
+    #                         2. Tennis court's key-points detection and .
     #                         3. Estimation of players speed and distance covered.
     #                         4. Estimation of players and ball speed.
-    #                         5. Extract player statistics to Excel file.
+    #                         5. Estimation of player's shot (forehand, backhand).
+    #                         6. Extract player statistics to Excel file.SS
     #                         """)
     #     st.subheader('How to use?', divider='blue')
     #     st.markdown("""
     #                         **There are two demo videos that are automatically loaded when you start the app, alongside the recommended settings and hyperparameters**
     #                         1. Upload a video to analyse, using the sidebar menu "Browse files" button.
-    #                         2. Enter the team names that corresponds to the uploaded video in the text fields in the sidebar menu.
-    #                         3. Access the "Team colors" tab in the main page.
-    #                         4. Select a frame where players and goal keepers from both teams can be detected.
-    #                         5. Follow the instruction on the page to pick each team colors.
-    #                         6. Go to the "Model Hyperpramerters & Detection" tab, adjust hyperparameters and select the annotation options. (Default hyperparameters are recommended)
-    #                         7. Run Detection!
-    #                         8. If "save outputs" option was selected the saved video can be found in the "outputs" directory
+    #                         2. Access the "Select Players" tab in the main page.
+    #                         3. Select a frame where both players can be detected.
+    #                         4. Follow the instruction on the page to select players
+    #                         5. Go to the "Model Detection" tab, adjust hyperparameters and select the annotation options. (Default hyperparameters are recommended)
+    #                         6. Run Detection!
+    #                         7. If "save outputs" option was selected the saved video can be found in the "outputs" directory
     #                         """)
 
     # Players Detection Tab
     with tab2:
-        st.header(':blue[Video Detection]')
+        st.header(':blue[Selecting Players]')
         t2col1, t2col2 = st.columns([1, 1])
         with t2col1:
             cap_temp = cv2.VideoCapture(tempf.name)
@@ -191,6 +195,7 @@ def main():
             extracted_frame.image(frame_with_boxes, use_column_width=True, channels="BGR")
 
     with tab3:
+        st.header(':blue[Player Analysis]')
         bcol21t, bcol22t = st.columns([1, 1])
         with bcol21t:
             show_k = st.toggle(label="Show Keypoints Detections", value=True)
@@ -245,6 +250,39 @@ def main():
             for frame in final_video:
                 st_frame.image(frame, channels="BGR")
             cap.release()
+
+    with tab4:
+        st.header(':blue[Pose Analysis]')
+        pose_frame = st.empty()
+        cap = cv2.VideoCapture(tempf.name)
+        bcol21, bcol22, bcol23, bcol24 = st.columns([1.5, 1, 1, 1])
+        with bcol21:
+            st.write('')
+        with bcol22:
+            start_pose = st.button(label='Start Pose Analysis')
+        with bcol23:
+            stop_btn_state = True if not start_detection else False
+            stop_pose = st.button(label='Stop Pose Analysis', disabled=stop_btn_state)
+        with bcol24:
+            st.write('')
+
+        if start_pose and not stop_pose:
+            shot = ShotIdentification()
+            opt = argparse.Namespace(
+                device='0',
+                line_thickness=3,
+                poseweights='yolov7-w6-pose.pt',
+                source=cap
+            )
+            shot.pose_analysis(opt)
+            # cap = cv2.VideoCapture("finaltestvideo_wed.mp4")
+            # final_video = read_video(cap)
+            # for frame in final_video:
+            #     pose_frame.image(frame, channels="BGR")
+            # cap.release()
+
+        st.write('Completed')
+
 
 if __name__ == "__main__":
     main()

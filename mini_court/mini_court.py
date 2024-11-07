@@ -252,7 +252,6 @@ class MiniCourt():
         return output_player_boxes , output_ball_boxes
     
     def draw_points_on_mini_court(self,frames,positions, color=(0,255,0)):
-
         for frame_num, frame in enumerate(frames):
             if frame_num > len(positions)-1:
                 break
